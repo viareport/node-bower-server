@@ -26,21 +26,42 @@ var WebServer = {
 
     postPackage: function () {
         this.app.post('/packages', function (req, res) {
-          var name, url;
+          var name, url, version;
           name = req.param('name');
           url = req.param('url');
-
-          this.database.create({name: name, url: url}, function(err){
-            if(!err){
-                res.send(200);
-            }
-            else if(err.name === 'ValidationError'){
-                res.send(400);
-            }
+          version = req.param('version');
+          this.database.findPackage(name, function (err, _package) {
+            if (err){res.send(406);}
             else{
-                res.send(406);
+              if(_package){
+                _package.addVersion({url:url, version:version}, function (err) {
+                  if(!err){
+                      res.send(200);
+                  }
+                  else if(err.name === 'ValidationError'){
+                      res.send(400);
+                  }
+                  else{
+                      res.send(406);
+                  }
+                });
+              }
+              else{
+                this.database.create({name: name, versions:[{url: url, version: version}]}, function(err){
+                  if(!err){
+                      res.send(200);
+                  }
+                  else if(err.name === 'ValidationError'){
+                      res.send(400);
+                  }
+                  else{
+                      res.send(406);
+                  }
+                });
+              }
             }
-          });
+         }.bind(this));
+
         }.bind(this));
     },
 

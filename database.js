@@ -2,7 +2,9 @@ var mongoose = require('mongoose');
 
 var Database = {
   schema: null,
+  packageSchema: null,
   model: null,
+  packageVersion: null,
 
   init: function (cb) {
     mongoose.connect('localhost', 'test');
@@ -23,9 +25,16 @@ var Database = {
   },
 
   createSchema: function () {
+    this.packageSchema = new mongoose.Schema({ 
+      url:  { type: String, index: { unique: true }, required: true }, 
+      version:  { type: String, index: { unique: true }, required: true } 
+    });
     this.schema = mongoose.Schema({
       name:  { type: String, index: { unique: true }, required: true },
-      url: { type: String, index: { unique: true }, required: true },
+      versions : [{
+        url:  { type: String, index: { unique: true }, required: true }, 
+        version:  { type: String, index: { unique: true }, required: true }
+      }],
       hits:   {type: Number, default: 0},
       createdAt: {type: Date, default: Date.now }
     });
@@ -36,13 +45,24 @@ var Database = {
       this.hits += 1 ;
       this.save();
     };
+    this.schema.methods.addVersion = function(model,cb) {
+      this.versions.addToSet(model);
+      this.save(cb);
+    };
   },
   createModel: function () {
+    this.packageVersion = mongoose.model('PackageVersion', this.packageSchema);
     this.model = mongoose.model('Package', this.schema);
   },
   createValidations: function () {
-    this.schema.path('url').validate(function (value) {
-      return value.match(/^git\:\/\//);
+    this.packageSchema.path('url').validate(function (value) {
+      if(value.match(/^git\:\/\//) !== null) {
+        return value.match(/^git\:\/\//); 
+      }
+      if(value.match(/^http\:\/\//) !== null) {
+        return value.match(/^http\:\/\//); 
+      }
+      return null;
     }, 'Invalid url');
   },
 
